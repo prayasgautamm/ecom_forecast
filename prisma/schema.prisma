@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  forecasts     Forecast[]
+}
+
+model Forecast {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  
+  // Product Information
+  productName     String
+  productCategory String
+  sku             String?
+  
+  // Forecast Data
+  period          DateTime
+  forecastValue   Float
+  actualValue     Float?
+  
+  // Additional Metrics
+  units           Int?
+  revenue         Float?
+  confidence      Float?    // Confidence level of forecast (0-100)
+  
+  // Metadata
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([period])
+  @@index([productCategory])
+}
+
+model ImportHistory {
+  id            String    @id @default(cuid())
+  fileName      String
+  importedBy    String
+  recordsCount  Int
+  status        String    // success, failed, partial
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+}
