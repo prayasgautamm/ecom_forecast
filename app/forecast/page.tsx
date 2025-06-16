@@ -3,7 +3,8 @@
 import React, { useEffect, Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { useForecastStore } from '@/lib/stores/forecast-store'
-import { initializeStoreWithLegacyData } from '@/lib/stores/data-adapter'
+// import { initializeStoreWithLegacyData } from '@/lib/stores/data-adapter'
+import { initializeStoreWithSimpleData } from '@/lib/stores/simple-data-adapter'
 import { ForecastLoadingScreen } from '@/components/forecast/ForecastLoadingScreen'
 import { cn } from '@/lib/utils'
 
@@ -43,15 +44,21 @@ export default function ForecastPage() {
       // Use setTimeout to make initialization async and show loading state
       setTimeout(() => {
         try {
-          const initialData = initializeStoreWithLegacyData()
+          console.log('Starting data initialization...')
+          const initialData = initializeStoreWithSimpleData()
+          console.log('Data initialized:', { 
+            skusCount: initialData.skus.length, 
+            forecastsCount: initialData.forecasts.size 
+          })
           initializeData(initialData)
         } catch (error) {
+          console.error('Initialization error:', error)
           useForecastStore.setState({ 
             error: error instanceof Error ? error.message : 'Failed to load data',
             isLoading: false 
           })
         }
-      }, 0)
+      }, 100)
     }
   }, [skus.length, initializeData])
 

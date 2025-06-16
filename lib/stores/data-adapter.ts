@@ -1,4 +1,4 @@
-import { SKUForecast, getAllSKUs, recalculateData } from '@/lib/forecast-data'
+import { SKUForecast, skuForecasts } from '@/lib/forecast-data'
 import { SKU, ForecastData, CalculatedWeek } from './forecast-store'
 
 export type HealthStatus = 'healthy' | 'low-stock' | 'out-of-stock' | 'overstocked'
@@ -13,11 +13,21 @@ function calculateHealthStatus(weeksCover: number): HealthStatus {
 
 // Convert legacy SKUForecast data to new format
 export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, ForecastData> } {
-  const allSKUs: SKUForecast[] = getAllSKUs()
+  const allSKUs: SKUForecast[] = skuForecasts || []
   const skus: SKU[] = []
   const forecasts = new Map<string, ForecastData>()
 
+  if (!allSKUs || !Array.isArray(allSKUs)) {
+    console.error('No SKU data found')
+    return { skus: [], forecasts: new Map() }
+  }
+
   allSKUs.forEach((legacySKU: SKUForecast) => {
+    if (!legacySKU.data || !Array.isArray(legacySKU.data)) {
+      console.warn(`Skipping SKU ${legacySKU.sku} - no data array found`)
+      return
+    }
+
     // Calculate totals and accuracy
     const totalForecast = legacySKU.data.reduce((sum: number, d: any) => sum + d.forecast, 0)
     const totalActual = legacySKU.data.reduce((sum: number, d: any) => sum + (d.actual || 0), 0)
