@@ -48,6 +48,9 @@ interface ForecastStore {
   viewMode: 'table' | 'chart' | 'summary'
   sidebarCollapsed: boolean
   
+  // Initialization
+  initializeData: (data: { skus: SKU[], forecasts: Map<string, ForecastData>, selectedSKUIds: string[] }) => void
+  
   // Actions
   setSearchTerm: (term: string) => void
   setViewMode: (mode: 'table' | 'chart' | 'summary') => void
@@ -87,6 +90,17 @@ export const useForecastStore = create<ForecastStore>()(
       searchTerm: '',
       viewMode: 'table',
       sidebarCollapsed: false,
+      
+      // Initialization method
+      initializeData: (data: { skus: SKU[], forecasts: Map<string, ForecastData>, selectedSKUIds: string[] }) => {
+        set({
+          skus: data.skus,
+          forecasts: data.forecasts,
+          selectedSKUIds: data.selectedSKUIds,
+          isLoading: false,
+          error: null
+        })
+      },
       
       // UI Actions
       setSearchTerm: (term) => set({ searchTerm: term }),

@@ -1,0 +1,111 @@
+import { SKUForecast, getAllSKUs, recalculateData } from '@/lib/forecast-data'
+import { SKU, ForecastData, CalculatedWeek, HealthStatus } from './forecast-store'
+
+// Helper function to calculate health status
+function calculateHealthStatus(weeksCover: number): HealthStatus {
+  if (weeksCover <= 0) return 'out-of-stock'
+  if (weeksCover <= 2) return 'low-stock'
+  if (weeksCover >= 12) return 'overstocked'
+  return 'healthy'
+}
+
+// Convert legacy SKUForecast data to new format
+export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, ForecastData> } {
+  const allSKUs = getAllSKUs()
+  const skus: SKU[] = []
+  const forecasts = new Map<string, ForecastData>()
+
+  allSKUs.forEach(legacySKU => {
+    // Calculate totals and accuracy
+    const totalForecast = legacySKU.data.reduce((sum, d) => sum + d.forecast, 0)
+    const totalActual = legacySKU.data.reduce((sum, d) => sum + (d.actual || 0), 0)
+    const accuracyPercent = totalActual > 0 ? ((totalForecast - totalActual) / totalActual) * 100 : null
+
+    // Calculate average weeks cover for health status
+    const validWeeksCover = legacySKU.data
+      .map(d => {
+        const final = d.actual || d.forecast
+        return final > 0 ? d.stock3PLFBA / (final * 7) : 0
+      })
+      .filter(wc => wc > 0)
+    
+    const avgWeeksCover = validWeeksCover.length > 0 
+      ? validWeeksCover.reduce((sum, wc) => sum + wc, 0) / validWeeksCover.length 
+      : 0
+
+    const healthStatus = calculateHealthStatus(avgWeeksCover)
+
+    // Create SKU entry
+    const sku: SKU = {
+      sku: legacySKU.sku,
+      displayName: legacySKU.displayName,
+      category: undefined, // Not in legacy data
+      healthStatus,
+      totalForecast,
+      totalActual,
+      accuracyPercent
+    }
+
+    skus.push(sku)
+
+    // Convert weekly data
+    const weeks: CalculatedWeek[] = legacySKU.data.map((weekData, index) => {
+      const weekNumber = index + 1
+      
+      // Calculate all fields using the existing recalculation logic
+      const recalculatedData = recalculateData([{
+        date: weekData.date,
+        stock3PLFBA: weekData.stock3PLFBA,
+        stockWeeks: weekData.stockWeeks,
+        forecast: weekData.forecast,
+        actual: weekData.actual,
+        hasActualData: weekData.actual !== null && weekData.actual !== undefined,
+        final: weekData.final,
+        errorPercent: weekData.errorPercent,
+        stockOut: weekData.stockOut,
+        stockIn: weekData.stockIn
+      }])
+
+      const recalculated = recalculatedData[0]
+      
+      return {
+        weekNumber,
+        date: weekData.date,
+        openingStock: weekData.stock3PLFBA,
+        forecastSales: weekData.forecast,
+        actualSales: weekData.actual,
+        hasActualData: weekData.actual !== null && weekData.actual !== undefined,
+        variance: weekData.actual !== null ? weekData.forecast - weekData.actual : null,
+        variancePercent: weekData.errorPercent || null,
+        stockIn: weekData.stockIn,
+        closingStock: Math.max(0, weekData.stock3PLFBA - recalculated.final + weekData.stockIn),
+        weeksCover: recalculated.stockWeeks,
+        final: recalculated.final,
+        errorPercent: weekData.errorPercent || null,
+        stockOut: weekData.stockOut
+      }
+    })
+
+    // Create forecast data
+    const forecastData: ForecastData = {
+      sku: legacySKU.sku,
+      weeks,
+      lastUpdated: new Date()
+    }
+
+    forecasts.set(legacySKU.sku, forecastData)
+  })
+
+  return { skus, forecasts }
+}
+
+// Initialize store with legacy data
+export function initializeStoreWithLegacyData() {
+  const { skus, forecasts } = convertLegacyData()
+  
+  return {
+    skus,
+    forecasts,
+    selectedSKUIds: skus.length > 0 ? [skus[0].sku] : []
+  }
+}
