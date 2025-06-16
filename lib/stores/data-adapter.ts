@@ -54,21 +54,14 @@ export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, Forec
     const weeks: CalculatedWeek[] = legacySKU.data.map((weekData: any, index: number) => {
       const weekNumber = index + 1
       
-      // Calculate all fields using the existing recalculation logic
-      const recalculatedData = recalculateData([{
-        date: weekData.date,
-        stock3PLFBA: weekData.stock3PLFBA,
-        stockWeeks: weekData.stockWeeks,
-        forecast: weekData.forecast,
-        actual: weekData.actual,
-        hasActualData: weekData.actual !== null && weekData.actual !== undefined,
-        final: weekData.final,
-        errorPercent: weekData.errorPercent,
-        stockOut: weekData.stockOut,
-        stockIn: weekData.stockIn
-      }])
-
-      const recalculated = recalculatedData[0]
+      // Calculate fields directly without using the heavy recalculateData function
+      const hasActualData = weekData.actual !== null && weekData.actual !== undefined
+      const final = hasActualData ? weekData.actual : weekData.forecast
+      const variance = hasActualData ? weekData.forecast - weekData.actual : null
+      const variancePercent = hasActualData && weekData.actual !== 0 
+        ? ((weekData.forecast - weekData.actual) / weekData.actual) * 100 
+        : null
+      const weeksCover = final > 0 ? Math.floor(weekData.stock3PLFBA / (final * 7) * 10) / 10 : 0
       
       return {
         weekNumber,
@@ -76,15 +69,15 @@ export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, Forec
         openingStock: weekData.stock3PLFBA,
         forecastSales: weekData.forecast,
         actualSales: weekData.actual,
-        hasActualData: weekData.actual !== null && weekData.actual !== undefined,
-        variance: weekData.actual !== null ? weekData.forecast - weekData.actual : null,
-        variancePercent: weekData.errorPercent || null,
+        hasActualData,
+        variance,
+        variancePercent,
         stockIn: weekData.stockIn,
-        closingStock: Math.max(0, weekData.stock3PLFBA - recalculated.final + weekData.stockIn),
-        weeksCover: recalculated.stockWeeks,
-        final: recalculated.final,
-        errorPercent: weekData.errorPercent || null,
-        stockOut: weekData.stockOut
+        closingStock: Math.max(0, weekData.stock3PLFBA - final + weekData.stockIn),
+        weeksCover,
+        final,
+        errorPercent: variancePercent,
+        stockOut: final * 7
       }
     })
 

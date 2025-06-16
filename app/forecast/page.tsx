@@ -1,11 +1,28 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { useForecastStore } from '@/lib/stores/forecast-store'
 import { initializeStoreWithLegacyData } from '@/lib/stores/data-adapter'
-import { SKUManagementSidebar } from '@/components/forecast/SKUManagementSidebar'
-import { ForecastWorkspace } from '@/components/forecast/ForecastWorkspace'
+import { ForecastLoadingScreen } from '@/components/forecast/ForecastLoadingScreen'
 import { cn } from '@/lib/utils'
+
+// Lazy load heavy components
+const SKUManagementSidebar = dynamic(
+  () => import('@/components/forecast/SKUManagementSidebar').then(mod => ({ default: mod.SKUManagementSidebar })),
+  { 
+    loading: () => <div className="w-80 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 animate-pulse" />,
+    ssr: false
+  }
+)
+
+const ForecastWorkspace = dynamic(
+  () => import('@/components/forecast/ForecastWorkspace').then(mod => ({ default: mod.ForecastWorkspace })),
+  { 
+    loading: () => <div className="flex-1 bg-gray-50 dark:bg-gray-900 animate-pulse" />,
+    ssr: false
+  }
+)
 
 export default function ForecastPage() {
   const {
@@ -20,8 +37,21 @@ export default function ForecastPage() {
   // Initialize store with legacy data on component mount
   useEffect(() => {
     if (skus.length === 0) {
-      const initialData = initializeStoreWithLegacyData()
-      initializeData(initialData)
+      // Set loading state immediately
+      useForecastStore.setState({ isLoading: true })
+      
+      // Use setTimeout to make initialization async and show loading state
+      setTimeout(() => {
+        try {
+          const initialData = initializeStoreWithLegacyData()
+          initializeData(initialData)
+        } catch (error) {
+          useForecastStore.setState({ 
+            error: error instanceof Error ? error.message : 'Failed to load data',
+            isLoading: false 
+          })
+        }
+      }, 0)
     }
   }, [skus.length, initializeData])
 
@@ -50,14 +80,7 @@ export default function ForecastPage() {
   }
 
   if (isLoading && skus.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 mx-auto mb-4 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading your forecast data...</p>
-        </div>
-      </div>
-    )
+    return <ForecastLoadingScreen />
   }
 
   return (
