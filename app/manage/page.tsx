@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatNumber } from '@/lib/utils'
 import { skuForecasts } from '@/lib/forecast-data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -121,9 +122,9 @@ export default function ManagePage() {
                     {filteredData.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{item.date}</TableCell>
-                        <TableCell className="text-right">{item.forecast.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{formatNumber(item.forecast)}</TableCell>
                         <TableCell className="text-right">
-                          {item.actual ? item.actual.toLocaleString() : '-'}
+                          {item.actual ? formatNumber(item.actual) : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           {item.errorPercent !== null && item.errorPercent !== undefined ? (

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { skuForecasts, getAllSKUs, getSKUsByIds, SKUForecast } from '@/lib/forecast-data'
+import { skuForecasts, getAllSKUs, getSKUsByIds, SKUForecast, recalculateData } from '@/lib/forecast-data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -13,15 +13,17 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { EditableCell } from '@/components/ui/editable-cell'
 import { Search, Filter, Download, RefreshCw, TrendingUp, Package, AlertCircle, CheckCircle2, TableIcon, LineChartIcon, BarChart3Icon, ChevronDown, ChevronRight, Plus, Trash2, Eye, Minus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { formatNumber, formatDecimal } from '@/lib/utils'
 
 export default function ForecastPage() {
   const allSKUs = getAllSKUs()
-  const [selectedSKUs, setSelectedSKUs] = useState<string[]>([allSKUs[0].sku])
+  const [selectedSKUs, setSelectedSKUs] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'summary' | 'table' | 'chart'>('table')
   const [forecastData, setForecastData] = useState<SKUForecast[]>(skuForecasts)
   const [searchTerm, setSearchTerm] = useState('')
@@ -30,6 +32,13 @@ export default function ForecastPage() {
   const [isDeleteSKUOpen, setIsDeleteSKUOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{sku: string, weekIndex: number} | null>(null)
   const [focusedCell, setFocusedCell] = useState<{sku: string, rowIndex: number, columnIndex: number} | null>(null)
+  
+  // Initialize selectedSKUs after mount to avoid hydration issues
+  useEffect(() => {
+    if (allSKUs.length > 0 && selectedSKUs.length === 0) {
+      setSelectedSKUs([allSKUs[0].sku])
+    }
+  }, [])
   
   const handleSKUToggle = (sku: string) => {
     setSelectedSKUs(prev => 
@@ -47,52 +56,35 @@ export default function ForecastPage() {
     setSelectedSKUs([])
   }
 
-  const handleForecastUpdate = (sku: string, dateIndex: number, newValue: number) => {
-    setForecastData(prev => 
-      prev.map(item => 
-        item.sku === sku 
-          ? {
-              ...item,
-              data: item.data.map((d, idx) => {
-                if (idx === dateIndex) {
-                  const updatedData = { ...d, forecast: newValue }
-                  updatedData.final = d.actual || newValue
-                  if (d.actual) {
-                    updatedData.errorPercent = ((newValue - d.actual) / d.actual) * 100
-                  }
-                  return updatedData
-                }
-                return d
-              })
-            }
-          : item
-      )
-    )
-  }
 
   const handleCellUpdate = (sku: string, dateIndex: number, field: string, newValue: number) => {
     setForecastData(prev => 
-      prev.map(item => 
-        item.sku === sku 
-          ? {
-              ...item,
-              data: item.data.map((d, idx) => {
-                if (idx === dateIndex) {
-                  const updatedData = { ...d, [field]: newValue }
-                  // Recalculate dependent fields
-                  if (field === 'forecast' || field === 'actual') {
-                    updatedData.final = updatedData.actual || updatedData.forecast
-                    if (updatedData.actual && updatedData.forecast) {
-                      updatedData.errorPercent = ((updatedData.forecast - updatedData.actual) / updatedData.actual) * 100
-                    }
-                  }
-                  return updatedData
-                }
-                return d
-              })
+      prev.map(item => {
+        if (item.sku !== sku) return item
+        
+        const updatedItem = { ...item }
+        
+        // Update the specific field
+        updatedItem.data = item.data.map((d, idx) => {
+          if (idx === dateIndex) {
+            const updatedRow = { ...d, [field]: newValue }
+            
+            // If updating actual field, set hasActualData flag
+            if (field === 'actual') {
+              updatedRow.hasActualData = true
+              updatedRow.actual = newValue
             }
-          : item
-      )
+            
+            return updatedRow
+          }
+          return d
+        })
+        
+        // Recalculate all dependent fields using Excel formulas
+        updatedItem.data = recalculateData(updatedItem.data)
+        
+        return updatedItem
+      })
     )
   }
 
@@ -116,6 +108,7 @@ export default function ForecastPage() {
     )
     setDeleteConfirm(null)
   }
+
 
   const filteredSKUs = allSKUs.filter(sku => 
     sku.displayName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -408,9 +401,9 @@ export default function ForecastPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Total Forecast:</span>
-                  <span className="font-medium">{selectedData.reduce((sum, sku) => 
+                  <span className="font-medium">{formatNumber(selectedData.reduce((sum, sku) => 
                     sum + sku.data.reduce((s, d) => s + d.forecast, 0), 0
-                  ).toLocaleString()}</span>
+                  ))}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Avg Error:</span>
@@ -465,9 +458,9 @@ export default function ForecastPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Total Forecast</p>
                         <p className="text-lg font-bold text-blue-700 dark:text-blue-400">
-                          {selectedData.reduce((sum, sku) => 
+                          {formatNumber(selectedData.reduce((sum, sku) => 
                             sum + sku.data.reduce((s, d) => s + d.forecast, 0), 0
-                          ).toLocaleString()}
+                          ))}
                         </p>
                       </div>
                     </div>
@@ -481,9 +474,9 @@ export default function ForecastPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Total Actual</p>
                         <p className="text-lg font-bold text-green-700 dark:text-green-400">
-                          {selectedData.reduce((sum, sku) => 
+                          {formatNumber(selectedData.reduce((sum, sku) => 
                             sum + sku.data.reduce((s, d) => s + (d.actual || 0), 0), 0
-                          ).toLocaleString()}
+                          ))}
                         </p>
                       </div>
                     </div>
@@ -576,7 +569,7 @@ export default function ForecastPage() {
                           {sku.displayName}
                         </CardTitle>
                         <CardDescription>
-                          Weekly forecast data with all inventory metrics
+                          Enter initial stock in week 1, then forecast values. All other fields calculate automatically.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="p-0">
@@ -621,25 +614,24 @@ export default function ForecastPage() {
                                       focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 0 
                                         ? 'ring-2 ring-indigo-500 ring-inset' : ''
                                     }`}>
-                                      <EditableCell
-                                        id={`cell-${sku.sku}-${index}-0`}
-                                        value={dataItem.stock3PLFBA}
-                                        onChange={(newValue) => handleCellUpdate(sku.sku, index, 'stock3PLFBA', newValue)}
-                                        className="text-gray-600 font-medium text-sm"
-                                        onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 0 })}
-                                      />
+                                      {index === 0 ? (
+                                        <EditableCell
+                                          id={`cell-${sku.sku}-${index}-0`}
+                                          value={dataItem.stock3PLFBA}
+                                          onChange={(newValue) => handleCellUpdate(sku.sku, index, 'stock3PLFBA', newValue)}
+                                          className="text-gray-600 font-medium text-sm"
+                                          onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 0 })}
+                                        />
+                                      ) : (
+                                        <div className="text-center font-medium text-gray-600 text-sm">
+                                          {formatNumber(dataItem.stock3PLFBA)}
+                                        </div>
+                                      )}
                                     </TableCell>
-                                    <TableCell className={`text-center border-r border-gray-200 dark:border-gray-700 p-2 ${
-                                      focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 1 
-                                        ? 'ring-2 ring-indigo-500 ring-inset' : ''
-                                    }`}>
-                                      <EditableCell
-                                        id={`cell-${sku.sku}-${index}-1`}
-                                        value={dataItem.stockWeeks}
-                                        onChange={(newValue) => handleCellUpdate(sku.sku, index, 'stockWeeks', newValue)}
-                                        className="text-gray-600 font-medium text-sm"
-                                        onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 1 })}
-                                      />
+                                    <TableCell className="text-center border-r border-gray-200 dark:border-gray-700 p-2">
+                                      <div className="text-center font-medium text-gray-600 text-sm">
+                                        {dataItem.stockWeeks}
+                                      </div>
                                     </TableCell>
                                     <TableCell className={`text-center border-r border-gray-200 dark:border-gray-700 bg-blue-50/30 dark:bg-blue-950/10 p-2 ${
                                       focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 2 
@@ -648,7 +640,7 @@ export default function ForecastPage() {
                                       <EditableCell
                                         id={`cell-${sku.sku}-${index}-2`}
                                         value={dataItem.forecast}
-                                        onChange={(newValue) => handleForecastUpdate(sku.sku, index, newValue)}
+                                        onChange={(newValue) => handleCellUpdate(sku.sku, index, 'forecast', newValue)}
                                         className="text-blue-600 font-medium text-sm"
                                         onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 2 })}
                                       />
@@ -657,42 +649,37 @@ export default function ForecastPage() {
                                       focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 3 
                                         ? 'ring-2 ring-indigo-500 ring-inset' : ''
                                     }`}>
-                                      <EditableCell
-                                        id={`cell-${sku.sku}-${index}-3`}
-                                        value={dataItem.actual || 0}
-                                        onChange={(newValue) => handleCellUpdate(sku.sku, index, 'actual', newValue)}
-                                        className="text-green-600 font-medium text-sm"
-                                        onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 3 })}
-                                      />
+                                      {dataItem.hasActualData ? (
+                                        <EditableCell
+                                          id={`cell-${sku.sku}-${index}-3`}
+                                          value={dataItem.actual || 0}
+                                          onChange={(newValue) => handleCellUpdate(sku.sku, index, 'actual', newValue)}
+                                          className="text-green-600 font-medium text-sm"
+                                          onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 3 })}
+                                        />
+                                      ) : (
+                                        <div 
+                                          className="text-center font-medium text-gray-400 text-sm cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/20 px-2 py-1 rounded transition-colors"
+                                          onClick={() => handleCellUpdate(sku.sku, index, 'actual', 0)}
+                                        >
+                                          -
+                                        </div>
+                                      )}
                                     </TableCell>
-                                    <TableCell className={`text-center border-r border-gray-200 dark:border-gray-700 bg-purple-50/30 dark:bg-purple-950/10 p-2 ${
-                                      focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 4 
-                                        ? 'ring-2 ring-indigo-500 ring-inset' : ''
-                                    }`}>
-                                      <EditableCell
-                                        id={`cell-${sku.sku}-${index}-4`}
-                                        value={dataItem.final}
-                                        onChange={(newValue) => handleCellUpdate(sku.sku, index, 'final', newValue)}
-                                        className="text-purple-600 font-medium text-sm"
-                                        onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 4 })}
-                                      />
+                                    <TableCell className="text-center border-r border-gray-200 dark:border-gray-700 bg-purple-50/30 dark:bg-purple-950/10 p-2">
+                                      <div className="text-center font-medium text-purple-600 text-sm">
+                                        {formatNumber(dataItem.final)}
+                                      </div>
                                     </TableCell>
                                     <TableCell className={`text-center font-medium text-sm border-r border-gray-200 dark:border-gray-700 ${
                                       dataItem.errorPercent === null || dataItem.errorPercent === undefined ? '' : Math.abs(dataItem.errorPercent) <= 1 ? 'text-green-600 bg-green-50/30 dark:bg-green-950/10' : Math.abs(dataItem.errorPercent) <= 2 ? 'text-yellow-600 bg-yellow-50/30 dark:bg-yellow-950/10' : 'text-red-600 bg-red-50/30 dark:bg-red-950/10'
                                     }`}>
                                       {dataItem.errorPercent !== null && dataItem.errorPercent !== undefined ? `${dataItem.errorPercent.toFixed(1)}%` : '-'}
                                     </TableCell>
-                                    <TableCell className={`text-center border-r border-gray-200 dark:border-gray-700 p-2 ${
-                                      focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 5 
-                                        ? 'ring-2 ring-indigo-500 ring-inset' : ''
-                                    }`}>
-                                      <EditableCell
-                                        id={`cell-${sku.sku}-${index}-5`}
-                                        value={dataItem.stockOut}
-                                        onChange={(newValue) => handleCellUpdate(sku.sku, index, 'stockOut', newValue)}
-                                        className="text-red-600 font-medium text-sm"
-                                        onFocus={() => setFocusedCell({ sku: sku.sku, rowIndex: index, columnIndex: 5 })}
-                                      />
+                                    <TableCell className="text-center border-r border-gray-200 dark:border-gray-700 p-2">
+                                      <div className="text-center font-medium text-red-600 text-sm">
+                                        {formatNumber(dataItem.stockOut)}
+                                      </div>
                                     </TableCell>
                                     <TableCell className={`text-center border-r border-gray-200 dark:border-gray-700 p-2 ${
                                       focusedCell?.sku === sku.sku && focusedCell?.rowIndex === index && focusedCell?.columnIndex === 6 
@@ -723,13 +710,13 @@ export default function ForecastPage() {
                                   -
                                 </TableCell>
                                 <TableCell className="text-center text-blue-700 bg-blue-100 dark:bg-blue-950/40 border-r border-gray-200 dark:border-gray-700">
-                                  {sku.data.reduce((sum, d) => sum + d.forecast, 0).toLocaleString()}
+                                  {formatNumber(sku.data.reduce((sum, d) => sum + d.forecast, 0))}
                                 </TableCell>
                                 <TableCell className="text-center text-green-700 bg-green-100 dark:bg-green-950/40 border-r border-gray-200 dark:border-gray-700">
-                                  {sku.data.reduce((sum, d) => sum + (d.actual || 0), 0).toLocaleString() || '-'}
+                                  {sku.data.reduce((sum, d) => sum + (d.actual || 0), 0) > 0 ? formatNumber(sku.data.reduce((sum, d) => sum + (d.actual || 0), 0)) : '-'}
                                 </TableCell>
                                 <TableCell className="text-center text-purple-700 bg-purple-100 dark:bg-purple-950/40 border-r border-gray-200 dark:border-gray-700">
-                                  {sku.data.reduce((sum, d) => sum + d.final, 0).toLocaleString()}
+                                  {formatNumber(sku.data.reduce((sum, d) => sum + d.final, 0))}
                                 </TableCell>
                                 <TableCell className="text-center bg-yellow-100 dark:bg-yellow-950/40 border-r border-gray-200 dark:border-gray-700">
                                   {(() => {
@@ -740,10 +727,10 @@ export default function ForecastPage() {
                                   })()}
                                 </TableCell>
                                 <TableCell className="text-center text-red-700 bg-red-100 dark:bg-red-950/40 border-r border-gray-200 dark:border-gray-700">
-                                  {sku.data.reduce((sum, d) => sum + d.stockOut, 0).toLocaleString()}
+                                  {formatNumber(sku.data.reduce((sum, d) => sum + d.stockOut, 0))}
                                 </TableCell>
                                 <TableCell className="text-center text-green-700 bg-green-100 dark:bg-green-950/40">
-                                  {sku.data.reduce((sum, d) => sum + d.stockIn, 0).toLocaleString()}
+                                  {formatNumber(sku.data.reduce((sum, d) => sum + d.stockIn, 0))}
                                 </TableCell>
                               </TableRow>
                             </TableBody>
@@ -790,10 +777,10 @@ export default function ForecastPage() {
                                       Week {index + 1}
                                     </TableCell>
                                     <TableCell className="text-center font-medium text-sm text-blue-600 bg-blue-50/30 dark:bg-blue-950/10 border-r border-gray-200 dark:border-gray-700">
-                                      {row.forecast.toLocaleString()}
+                                      {formatNumber(row.forecast)}
                                     </TableCell>
                                     <TableCell className="text-center font-medium text-sm text-green-600 bg-green-50/30 dark:bg-green-950/10 border-r border-gray-200 dark:border-gray-700">
-                                      {row.actual ? row.actual.toLocaleString() : '-'}
+                                      {row.actual ? formatNumber(row.actual) : '-'}
                                     </TableCell>
                                     <TableCell className={`text-center font-medium text-sm border-r border-gray-200 dark:border-gray-700 ${
                                       variance === null ? '' : 
@@ -802,7 +789,7 @@ export default function ForecastPage() {
                                       'text-green-600 bg-green-50/30 dark:bg-green-950/10'
                                     }`}>
                                       {variance !== null ? 
-                                        `${variance > 0 ? '+' : ''}${variance.toLocaleString()}` + 
+                                        `${variance > 0 ? '+' : ''}${formatNumber(variance)}` + 
                                         (variancePercent !== null ? ` (${variancePercent > 0 ? '+' : ''}${variancePercent.toFixed(1)}%)` : '')
                                         : '-'
                                       }
@@ -816,10 +803,10 @@ export default function ForecastPage() {
                                   Total
                                 </TableCell>
                                 <TableCell className="text-center text-blue-700 bg-blue-100 dark:bg-blue-950/40 border-r border-gray-200 dark:border-gray-700">
-                                  {sku.data.reduce((sum, d) => sum + d.forecast, 0).toLocaleString()}
+                                  {formatNumber(sku.data.reduce((sum, d) => sum + d.forecast, 0))}
                                 </TableCell>
                                 <TableCell className="text-center text-green-700 bg-green-100 dark:bg-green-950/40 border-r border-gray-200 dark:border-gray-700">
-                                  {sku.data.reduce((sum, d) => sum + (d.actual || 0), 0).toLocaleString()}
+                                  {formatNumber(sku.data.reduce((sum, d) => sum + (d.actual || 0), 0))}
                                 </TableCell>
                                 <TableCell className="text-center text-gray-700 bg-gray-100 dark:bg-gray-950/40 border-r border-gray-200 dark:border-gray-700">
                                   {(() => {
@@ -828,7 +815,7 @@ export default function ForecastPage() {
                                     const totalVariance = totalForecast - totalActual
                                     const totalVariancePercent = totalActual > 0 ? (totalVariance / totalActual) * 100 : null
                                     return totalVariance !== 0 ? 
-                                      `${totalVariance > 0 ? '+' : ''}${totalVariance.toLocaleString()}` + 
+                                      `${totalVariance > 0 ? '+' : ''}${formatNumber(totalVariance)}` + 
                                       (totalVariancePercent !== null ? ` (${totalVariancePercent > 0 ? '+' : ''}${totalVariancePercent.toFixed(1)}%)` : '')
                                       : '0'
                                   })()}
@@ -864,7 +851,7 @@ export default function ForecastPage() {
                             />
                             <YAxis tick={{ fontSize: 12 }} />
                             <Tooltip 
-                              formatter={(value: any) => value ? value.toLocaleString() : 'N/A'}
+                              formatter={(value: any) => value ? formatNumber(value) : 'N/A'}
                               contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #ccc', borderRadius: '8px' }}
                             />
                             <Legend />

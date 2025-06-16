@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
 
 interface EditableCellProps {
   value: number
@@ -58,7 +58,7 @@ export function EditableCell({ value, onChange, className, disabled = false, id,
   if (disabled) {
     return (
       <div className={cn("text-center font-medium", className)}>
-        {value.toLocaleString()}
+        {formatNumber(value)}
       </div>
     )
   }
@@ -86,7 +86,7 @@ export function EditableCell({ value, onChange, className, disabled = false, id,
         className
       )}
     >
-      {value.toLocaleString()}
+      {formatNumber(value)}
     </div>
   )
 }
