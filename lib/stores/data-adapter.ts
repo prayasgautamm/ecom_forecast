@@ -1,5 +1,7 @@
 import { SKUForecast, getAllSKUs, recalculateData } from '@/lib/forecast-data'
-import { SKU, ForecastData, CalculatedWeek, HealthStatus } from './forecast-store'
+import { SKU, ForecastData, CalculatedWeek } from './forecast-store'
+
+export type HealthStatus = 'healthy' | 'low-stock' | 'out-of-stock' | 'overstocked'
 
 // Helper function to calculate health status
 function calculateHealthStatus(weeksCover: number): HealthStatus {
@@ -11,26 +13,26 @@ function calculateHealthStatus(weeksCover: number): HealthStatus {
 
 // Convert legacy SKUForecast data to new format
 export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, ForecastData> } {
-  const allSKUs = getAllSKUs()
+  const allSKUs: SKUForecast[] = getAllSKUs()
   const skus: SKU[] = []
   const forecasts = new Map<string, ForecastData>()
 
-  allSKUs.forEach(legacySKU => {
+  allSKUs.forEach((legacySKU: SKUForecast) => {
     // Calculate totals and accuracy
-    const totalForecast = legacySKU.data.reduce((sum, d) => sum + d.forecast, 0)
-    const totalActual = legacySKU.data.reduce((sum, d) => sum + (d.actual || 0), 0)
+    const totalForecast = legacySKU.data.reduce((sum: number, d: any) => sum + d.forecast, 0)
+    const totalActual = legacySKU.data.reduce((sum: number, d: any) => sum + (d.actual || 0), 0)
     const accuracyPercent = totalActual > 0 ? ((totalForecast - totalActual) / totalActual) * 100 : null
 
     // Calculate average weeks cover for health status
     const validWeeksCover = legacySKU.data
-      .map(d => {
+      .map((d: any) => {
         const final = d.actual || d.forecast
         return final > 0 ? d.stock3PLFBA / (final * 7) : 0
       })
-      .filter(wc => wc > 0)
+      .filter((wc: number) => wc > 0)
     
     const avgWeeksCover = validWeeksCover.length > 0 
-      ? validWeeksCover.reduce((sum, wc) => sum + wc, 0) / validWeeksCover.length 
+      ? validWeeksCover.reduce((sum: number, wc: number) => sum + wc, 0) / validWeeksCover.length 
       : 0
 
     const healthStatus = calculateHealthStatus(avgWeeksCover)
@@ -49,7 +51,7 @@ export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, Forec
     skus.push(sku)
 
     // Convert weekly data
-    const weeks: CalculatedWeek[] = legacySKU.data.map((weekData, index) => {
+    const weeks: CalculatedWeek[] = legacySKU.data.map((weekData: any, index: number) => {
       const weekNumber = index + 1
       
       // Calculate all fields using the existing recalculation logic
