@@ -1,29 +1,13 @@
 'use client'
 
-import React, { useEffect, Suspense } from 'react'
-import dynamic from 'next/dynamic'
+import React, { useEffect } from 'react'
 import { useForecastStore } from '@/lib/stores/forecast-store'
 // import { initializeStoreWithLegacyData } from '@/lib/stores/data-adapter'
 import { initializeStoreWithSimpleData } from '@/lib/stores/simple-data-adapter'
 import { ForecastLoadingScreen } from '@/components/forecast/ForecastLoadingScreen'
+import { SKUManagementSidebar } from '@/components/forecast/SKUManagementSidebar'
+import { ForecastWorkspace } from '@/components/forecast/ForecastWorkspace'
 import { cn } from '@/lib/utils'
-
-// Lazy load heavy components
-const SKUManagementSidebar = dynamic(
-  () => import('@/components/forecast/SKUManagementSidebar').then(mod => ({ default: mod.SKUManagementSidebar })),
-  { 
-    loading: () => <div className="w-80 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 animate-pulse" />,
-    ssr: false
-  }
-)
-
-const ForecastWorkspace = dynamic(
-  () => import('@/components/forecast/ForecastWorkspace').then(mod => ({ default: mod.ForecastWorkspace })),
-  { 
-    loading: () => <div className="flex-1 bg-gray-50 dark:bg-gray-900 animate-pulse" />,
-    ssr: false
-  }
-)
 
 export default function ForecastPage() {
   const {
@@ -60,7 +44,7 @@ export default function ForecastPage() {
         }
       }, 100)
     }
-  }, [skus.length, initializeData])
+  }, []) // Remove dependencies to prevent re-runs
 
   if (error) {
     return (
@@ -89,6 +73,13 @@ export default function ForecastPage() {
   if (isLoading && skus.length === 0) {
     return <ForecastLoadingScreen />
   }
+
+  console.log('Rendering forecast page:', { 
+    skusCount: skus.length, 
+    selectedCount: selectedSKUIds.length,
+    isLoading,
+    error 
+  })
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -122,6 +113,11 @@ export default function ForecastPage() {
           )} 
         />
         <ForecastWorkspace className="flex-1" />
+      </div>
+
+      {/* Debug Info */}
+      <div className="fixed bottom-4 left-4 bg-black text-white p-2 text-xs rounded">
+        SKUs: {skus.length} | Selected: {selectedSKUIds.length} | Loading: {isLoading.toString()}
       </div>
     </div>
   )
