@@ -10,7 +10,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -22,8 +22,8 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -100,5 +100,85 @@
   .animate-gradient {
     background-size: 200% 200%;
     animation: gradient 3s ease infinite;
+  }
+
+  /* Modern glassmorphism effects */
+  .glass {
+    @apply backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border border-white/20 dark:border-gray-700/30;
+  }
+
+  .glass-subtle {
+    @apply backdrop-blur-md bg-white/50 dark:bg-gray-900/50 border border-white/10 dark:border-gray-700/20;
+  }
+
+  /* Modern gradients */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-blue-500 to-indigo-600;
+  }
+
+  .gradient-success {
+    @apply bg-gradient-to-r from-emerald-500 to-teal-600;
+  }
+
+  .gradient-danger {
+    @apply bg-gradient-to-r from-red-500 to-pink-600;
+  }
+
+  .gradient-warning {
+    @apply bg-gradient-to-r from-amber-500 to-orange-600;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Modern shadows */
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  }
+
+  .shadow-glow-lg {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+
+  /* Number transitions */
+  .number-transition {
+    @apply transition-all duration-500 ease-out;
+  }
+
+  /* Skeleton loading */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Pulse animation */
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }

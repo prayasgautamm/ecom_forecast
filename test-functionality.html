@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Functionality</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .card { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            margin: 10px 0; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .selected { 
+            background-color: #e3f2fd; 
+            border-color: #2196f3;
+            box-shadow: 0 0 0 2px #2196f3;
+        }
+        .search { padding: 8px; width: 300px; margin-bottom: 20px; }
+        .status { margin-top: 20px; padding: 10px; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        const sampleSKUs = [
+            { sku: '6LD', displayName: '6 LD', category: 'Electronics' },
+            { sku: '6ST', displayName: '6 ST', category: 'Electronics' },
+            { sku: '3LD-CS008', displayName: '3 LD - CS 008', category: 'Accessories' },
+            { sku: '3ST-CS010', displayName: '3 ST - CS 010', category: 'Accessories' },
+            { sku: 'CDS-001', displayName: 'CDS-001 - 12 x 5', category: 'Storage' },
+            { sku: 'CDS-002', displayName: 'CDS-002 - 12 x 9', category: 'Storage' }
+        ];
+
+        function TestApp() {
+            const [selectedSKUs, setSelectedSKUs] = useState(['6LD']);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [expandedSKUs, setExpandedSKUs] = useState([]);
+
+            const filteredSKUs = useMemo(() => {
+                if (!searchTerm) return sampleSKUs;
+                const term = searchTerm.toLowerCase();
+                return sampleSKUs.filter(sku => 
+                    sku.displayName.toLowerCase().includes(term) ||
+                    sku.sku.toLowerCase().includes(term) ||
+                    sku.category.toLowerCase().includes(term)
+                );
+            }, [searchTerm]);
+
+            const toggleSKU = (sku) => {
+                console.log('Toggle SKU:', sku);
+                setSelectedSKUs(prev => 
+                    prev.includes(sku) 
+                        ? prev.filter(s => s !== sku)
+                        : [...prev, sku]
+                );
+            };
+
+            const toggleExpanded = (sku) => {
+                console.log('Toggle Expanded:', sku);
+                setExpandedSKUs(prev => 
+                    prev.includes(sku) 
+                        ? prev.filter(s => s !== sku)
+                        : [...prev, sku]
+                );
+            };
+
+            return (
+                <div>
+                    <h1>Functionality Test</h1>
+                    
+                    <input
+                        type="text"
+                        className="search"
+                        placeholder="Search SKUs..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+
+                    <h2>SKUs ({filteredSKUs.length})</h2>
+                    
+                    {filteredSKUs.map((sku) => (
+                        <div
+                            key={sku.sku}
+                            className={`card ${selectedSKUs.includes(sku.sku) ? 'selected' : ''}`}
+                            onClick={() => toggleSKU(sku.sku)}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedSKUs.includes(sku.sku)}
+                                onChange={() => toggleSKU(sku.sku)}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ marginRight: '10px' }}
+                            />
+                            <strong>{sku.displayName}</strong> - {sku.category}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    alert(`Edit ${sku.sku}`);
+                                }}
+                                style={{ marginLeft: '10px' }}
+                            >
+                                Edit
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Delete ${sku.sku}?`)) {
+                                        alert(`Would delete ${sku.sku}`);
+                                    }
+                                }}
+                                style={{ marginLeft: '5px' }}
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    ))}
+
+                    <div className="status">
+                        <h3>Status:</h3>
+                        <p>Selected SKUs: {selectedSKUs.join(', ') || 'None'}</p>
+                        <p>Search Term: {searchTerm || 'None'}</p>
+                        <p>Filtered Count: {filteredSKUs.length}</p>
+                    </div>
+
+                    <h2>Selected SKU Details</h2>
+                    {selectedSKUs.map(skuId => {
+                        const sku = sampleSKUs.find(s => s.sku === skuId);
+                        if (!sku) return null;
+                        const isExpanded = expandedSKUs.includes(skuId);
+                        
+                        return (
+                            <div key={skuId} style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}>
+                                <h3 
+                                    onClick={() => toggleExpanded(skuId)}
+                                    style={{ cursor: 'pointer', background: '#f0f0f0', padding: '10px' }}
+                                >
+                                    {isExpanded ? '▼' : '▶'} {sku.displayName}
+                                </h3>
+                                {isExpanded && (
+                                    <div style={{ padding: '10px', background: '#fafafa' }}>
+                                        <p>Category: {sku.category}</p>
+                                        <p>SKU Code: {sku.sku}</p>
+                                        <p>Details would go here...</p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TestApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

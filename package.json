@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
@@ -24,7 +27,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "lucide-react": "^0.263.1",
-    "next": "14.2.3",
+    "next": "^14.2.30",
     "next-auth": "^4.24.0",
     "react": "^18",
     "react-dom": "^18",
@@ -37,6 +40,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

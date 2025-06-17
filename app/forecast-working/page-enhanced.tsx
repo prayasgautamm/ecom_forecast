@@ -128,9 +128,11 @@ const initialSKUs = [
 const generateWeeklyData = (sku: any) => {
   const weeks = []
   let currentStock = sku.currentStock
+  const currentWeek = new Date().getWeek()
   
-  // Generate 52 weeks of data (W01 to W52)
+  // Generate 52 weeks of data
   for (let i = 1; i <= 52; i++) {
+    const weekNum = ((currentWeek + i - 2) % 52) + 1
     const forecast = Math.floor(sku.totalForecast / 52 * (0.8 + Math.random() * 0.4))
     const actual = i <= 4 ? Math.floor(forecast * (0.9 + Math.random() * 0.2)) : null
     const openingStock = currentStock
@@ -141,7 +143,7 @@ const generateWeeklyData = (sku: any) => {
     const weeksCover = closingStock > 0 ? (closingStock / (sku.totalForecast / 52)).toFixed(1) : '0'
     
     weeks.push({
-      week: `W${i.toString().padStart(2, '0')}`,
+      week: `W${weekNum.toString().padStart(2, '0')}`,
       forecast,
       actual,
       variance,
@@ -176,9 +178,6 @@ export default function WorkingForecastPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingSKU, setEditingSKU] = useState<any>(null)
-  const [sidebarSectionOpen, setSidebarSectionOpen] = useState({
-    skuManagement: true
-  })
   const [formData, setFormData] = useState<SKUFormData>({
     sku: '',
     displayName: '',
@@ -353,86 +352,74 @@ export default function WorkingForecastPage() {
       <div className="flex h-[calc(100vh-88px)] relative">
         {/* Sidebar */}
         <div className="w-80 glass border-r border-white/10 dark:border-gray-800/30 flex flex-col shadow-xl">
-          {/* SKU Management Section */}
-          <Collapsible 
-            open={sidebarSectionOpen.skuManagement} 
-            onOpenChange={(open) => setSidebarSectionOpen(prev => ({ ...prev, skuManagement: open }))}
-          >
-            <CollapsibleTrigger className="w-full">
-              <div className="px-4 py-3 border-b border-white/10 dark:border-gray-800/30 hover:bg-white/5 dark:hover:bg-gray-800/20 transition-colors cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <h2 className="text-base font-normal">SKU Management</h2>
-                    <Badge className="gradient-primary text-white border-0 shadow-sm text-xs">{filteredSKUs.length}</Badge>
-                  </div>
-                  {sidebarSectionOpen.skuManagement ? 
-                    <ChevronDown className="h-4 w-4 text-gray-400" /> : 
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  }
+          <div className="p-4 border-b border-white/10 dark:border-gray-800/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-600/20 flex items-center justify-center">
+                  <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
+                <h2 className="font-semibold text-lg">SKUs</h2>
+                <Badge className="gradient-primary text-white border-0 shadow-sm">{filteredSKUs.length}</Badge>
               </div>
-            </CollapsibleTrigger>
+            </div>
             
-            <CollapsibleContent>
-              <div className="p-4 border-b border-white/10 dark:border-gray-800/30">
-                {/* Search */}
-                <div className="relative mb-3 group">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
-                  <Input
-                    placeholder="Search SKUs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/50 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 focus:bg-white dark:focus:bg-gray-900 transition-all duration-200"
-                  />
-                </div>
-                
-                <Button 
-                  className="w-full gradient-primary text-white border-0 shadow-glow hover:shadow-glow-lg transition-smooth" 
-                  size="sm"
-                  onClick={handleAddSKU}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add SKU
-                </Button>
-              </div>
+            {/* Search */}
+            <div className="relative mb-3 group">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Input
+                placeholder="Search SKUs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-white/50 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 focus:bg-white dark:focus:bg-gray-900 transition-all duration-200"
+              />
+            </div>
+            
+            <Button 
+              className="w-full gradient-primary text-white border-0 shadow-glow hover:shadow-glow-lg transition-smooth" 
+              size="sm"
+              onClick={handleAddSKU}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add SKU
+            </Button>
+          </div>
 
-              {/* Bulk Actions */}
-              {filteredSKUs.length > 0 && (
-                <div className="px-4 py-3 border-b border-white/10 dark:border-gray-800/30 bg-gradient-to-r from-gray-50/50 to-blue-50/30 dark:from-gray-900/30 dark:to-blue-900/20">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={filteredSKUs.length > 0 && selectedSKUs.length === filteredSKUs.length}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedSKUs(filteredSKUs.map(s => s.sku))
-                          } else {
-                            setSelectedSKUs([])
-                          }
-                        }}
-                        className="transition-all duration-200"
-                      />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">
-                        {selectedSKUs.length > 0 ? `${selectedSKUs.length} selected` : 'Select all'}
-                      </span>
-                    </div>
-                    {selectedSKUs.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedSKUs([])}
-                        className="h-7 px-3 text-xs hover:bg-white/50 dark:hover:bg-gray-800/50 transition-smooth"
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
+          {/* Bulk Actions */}
+          {filteredSKUs.length > 0 && (
+            <div className="px-4 py-3 border-b border-white/10 dark:border-gray-800/30 bg-gradient-to-r from-gray-50/50 to-blue-50/30 dark:from-gray-900/30 dark:to-blue-900/20">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={filteredSKUs.length > 0 && selectedSKUs.length === filteredSKUs.length}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedSKUs(filteredSKUs.map(s => s.sku))
+                      } else {
+                        setSelectedSKUs([])
+                      }
+                    }}
+                    className="transition-all duration-200"
+                  />
+                  <span className="text-gray-600 dark:text-gray-400 font-medium">
+                    {selectedSKUs.length > 0 ? `${selectedSKUs.length} selected` : 'Select all'}
+                  </span>
                 </div>
-              )}
-              
-              {/* SKU List */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {selectedSKUs.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedSKUs([])}
+                    className="h-7 px-3 text-xs hover:bg-white/50 dark:hover:bg-gray-800/50 transition-smooth"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* SKU List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {filteredSKUs.map((sku) => (
               <Card
                 key={sku.sku}
@@ -492,12 +479,8 @@ export default function WorkingForecastPage() {
                 </CardContent>
               </Card>
             ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          </div>
 
-          {/* Space for additional sidebar sections */}
-          <div className="flex-1"></div>
         </div>
 
         {/* Main Content */}
