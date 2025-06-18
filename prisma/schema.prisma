@@ -15,6 +15,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   forecasts     Forecast[]
+  skus          SKU[]
 }
 
 model Forecast {
@@ -22,10 +23,14 @@ model Forecast {
   userId          String
   user            User      @relation(fields: [userId], references: [id])
   
-  // Product Information
+  // SKU Relation
+  skuId           String?
+  sku             SKU?      @relation(fields: [skuId], references: [id])
+  
+  // Product Information (legacy support)
   productName     String
   productCategory String
-  sku             String?
+  skuCode         String?   // renamed from sku to avoid confusion
   
   // Forecast Data
   period          DateTime
@@ -43,8 +48,55 @@ model Forecast {
   updatedAt       DateTime  @updatedAt
   
   @@index([userId])
+  @@index([skuId])
   @@index([period])
   @@index([productCategory])
+}
+
+model SKU {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  
+  // Basic Information
+  sku             String    @unique
+  displayName     String
+  category        String
+  description     String?
+  
+  // Inventory Management
+  currentStock    Int       @default(0)
+  leadTime        Int       @default(7)     // Days to receive new stock
+  reorderPoint    Int       @default(0)     // When to reorder
+  safetyStock     Int       @default(0)     // Buffer stock
+  moq             Int       @default(1)     // Minimum Order Quantity
+  
+  // Financial
+  costPrice       Float     @default(0)
+  sellingPrice    Float     @default(0)
+  holdingCost     Float     @default(0)     // Cost per unit per period
+  
+  // ABC Analysis
+  abcCategory     String?   // A, B, or C
+  annualRevenue   Float     @default(0)
+  annualVolume    Int       @default(0)
+  
+  // Status
+  status          String    @default("active") // active, discontinued, seasonal
+  stockStatus     String?   // healthy, low-stock, out-of-stock, overstocked
+  
+  // Metadata
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  forecasts       Forecast[]
+  
+  @@index([userId])
+  @@index([category])
+  @@index([abcCategory])
+  @@index([status])
 }
 
 model ImportHistory {
