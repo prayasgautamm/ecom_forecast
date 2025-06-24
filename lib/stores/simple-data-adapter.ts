@@ -6,6 +6,7 @@ export function initializeStoreWithSimpleData() {
     {
       sku: "6LD",
       displayName: "6 LD",
+      productGroup: "ld-series",
       healthStatus: 'healthy',
       totalForecast: 1000,
       totalActual: 0,
@@ -14,6 +15,7 @@ export function initializeStoreWithSimpleData() {
     {
       sku: "6ST",
       displayName: "6 ST", 
+      productGroup: "st-series",
       healthStatus: 'healthy',
       totalForecast: 1500,
       totalActual: 0,
@@ -22,8 +24,54 @@ export function initializeStoreWithSimpleData() {
     {
       sku: "3LD-CS008",
       displayName: "3 LD - CS 008",
+      productGroup: "ld-series",
       healthStatus: 'healthy',
       totalForecast: 800,
+      totalActual: 0,
+      accuracyPercent: null
+    },
+    {
+      sku: "3ST-CS010",
+      displayName: "3 ST - CS 010",
+      productGroup: "st-series",
+      healthStatus: 'healthy',
+      totalForecast: 1200,
+      totalActual: 0,
+      accuracyPercent: null
+    },
+    {
+      sku: "10LD",
+      displayName: "10 LD",
+      productGroup: "ld-series",
+      healthStatus: 'healthy',
+      totalForecast: 900,
+      totalActual: 0,
+      accuracyPercent: null
+    },
+    {
+      sku: "10ST",
+      displayName: "10 ST",
+      productGroup: "st-series",
+      healthStatus: 'healthy',
+      totalForecast: 1400,
+      totalActual: 0,
+      accuracyPercent: null
+    },
+    {
+      sku: "CDS-001",
+      displayName: "CDS-001 - 12 x 5",
+      productGroup: "cds-series",
+      healthStatus: 'healthy',
+      totalForecast: 600,
+      totalActual: 0,
+      accuracyPercent: null
+    },
+    {
+      sku: "CDS-002",
+      displayName: "CDS-002 - 12 x 9",
+      productGroup: "cds-series",
+      healthStatus: 'healthy',
+      totalForecast: 700,
       totalActual: 0,
       accuracyPercent: null
     }

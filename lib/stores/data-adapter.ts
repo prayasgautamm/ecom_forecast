@@ -11,6 +11,14 @@ function calculateHealthStatus(weeksCover: number): HealthStatus {
   return 'healthy'
 }
 
+// Helper function to determine product group
+function getProductGroupForSKU(sku: string): string {
+  if (sku.includes('LD')) return 'ld-series'
+  if (sku.includes('ST')) return 'st-series'
+  if (sku.includes('CDS')) return 'cds-series'
+  return 'ld-series' // default fallback
+}
+
 // Convert legacy SKUForecast data to new format
 export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, ForecastData> } {
   const allSKUs: SKUForecast[] = skuForecasts || []
@@ -52,6 +60,7 @@ export function convertLegacyData(): { skus: SKU[], forecasts: Map<string, Forec
       sku: legacySKU.sku,
       displayName: legacySKU.displayName,
       category: undefined, // Not in legacy data
+      productGroup: getProductGroupForSKU(legacySKU.sku),
       healthStatus,
       totalForecast,
       totalActual,

@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useForecastStore } from '@/lib/stores/forecast-store'
 import { ForecastTable } from './ForecastTable'
 import { StatusBadge } from './StatusBadge'
+import { ComparisonView } from './ComparisonView'
 import { formatNumber } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,7 +30,9 @@ import {
   AlertCircle,
   Download,
   RefreshCw,
-  Plus
+  Plus,
+  Layers,
+  LayoutGrid
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -40,35 +43,20 @@ interface ForecastWorkspaceProps {
 export function ForecastWorkspace({ className }: ForecastWorkspaceProps) {
   const {
     selectedSKUIds,
+    selectedGroupIds,
     viewMode,
+    comparisonMode,
     setViewMode,
+    setComparisonMode,
     getSelectedForecasts,
     getTotalStats,
+    getGroupStats,
+    productGroups,
     isLoading
   } = useForecastStore()
 
-  const [collapsedTables, setCollapsedTables] = useState<Set<string>>(new Set())
-  
   const selectedForecasts = getSelectedForecasts()
   const totalStats = getTotalStats()
-
-  const toggleTableCollapse = (skuId: string) => {
-    const newCollapsed = new Set(collapsedTables)
-    if (newCollapsed.has(skuId)) {
-      newCollapsed.delete(skuId)
-    } else {
-      newCollapsed.add(skuId)
-    }
-    setCollapsedTables(newCollapsed)
-  }
-
-  const collapseAll = () => {
-    setCollapsedTables(new Set(selectedForecasts.map(f => f.sku)))
-  }
-
-  const expandAll = () => {
-    setCollapsedTables(new Set())
-  }
 
   // Prepare chart data
   const chartData = selectedForecasts.length > 0 
@@ -199,35 +187,50 @@ export function ForecastWorkspace({ className }: ForecastWorkspaceProps) {
               </TabsList>
             </Tabs>
 
-            <div className="flex items-center gap-2">
-              {viewMode === 'table' && selectedForecasts.length > 1 && (
-                <>
-                  <Button 
-                    variant="outline" 
+            <div className="flex items-center gap-4">
+              {/* Comparison Mode Toggle */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Compare:</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant={comparisonMode === 'none' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={expandAll}
-                    disabled={collapsedTables.size === 0}
+                    onClick={() => setComparisonMode('none')}
+                    className="h-8"
                   >
-                    Expand All
+                    None
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant={comparisonMode === 'groups' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={collapseAll}
-                    disabled={collapsedTables.size === selectedForecasts.length}
+                    onClick={() => setComparisonMode('groups')}
+                    className="h-8 gap-1"
                   >
-                    Collapse All
+                    <Layers className="h-4 w-4" />
+                    Groups
                   </Button>
-                </>
-              )}
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2" disabled={isLoading}>
-                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-                Refresh
-              </Button>
+                  <Button
+                    variant={comparisonMode === 'skus' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setComparisonMode('skus')}
+                    className="h-8 gap-1"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    SKUs
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isLoading}>
+                  <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -236,15 +239,19 @@ export function ForecastWorkspace({ className }: ForecastWorkspaceProps) {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-6">
         <Tabs value={viewMode} className="h-full">
-          <TabsContent value="table" className="mt-0 space-y-6">
-            {selectedForecasts.map((forecast) => (
-              <ForecastTable
-                key={forecast.sku}
-                forecast={forecast}
-                isCollapsed={collapsedTables.has(forecast.sku)}
-                onToggleCollapse={() => toggleTableCollapse(forecast.sku)}
-              />
-            ))}
+          <TabsContent value="table" className="mt-0">
+            {comparisonMode === 'none' ? (
+              <div className="space-y-6">
+                {selectedForecasts.map((forecast) => (
+                  <ForecastTable
+                    key={forecast.sku}
+                    forecast={forecast}
+                  />
+                ))}
+              </div>
+            ) : (
+              <ComparisonView mode={comparisonMode} />
+            )}
           </TabsContent>
 
           <TabsContent value="chart" className="mt-0">

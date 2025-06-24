@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Search, 
   Plus, 
@@ -36,9 +37,11 @@ import {
   TrendingUp, 
   TrendingDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 
 interface SKUManagementSidebarProps {
   className?: string
@@ -49,10 +52,16 @@ export function SKUManagementSidebar({ className }: SKUManagementSidebarProps) {
     searchTerm,
     setSearchTerm,
     selectedSKUIds,
+    selectedGroupIds,
+    productGroups,
     toggleSKU,
+    toggleGroup,
     selectAllSKUs,
     unselectAllSKUs,
+    selectAllInGroup,
+    unselectAllInGroup,
     getFilteredSKUs,
+    getSKUsByGroup,
     createSKU,
     deleteSKU,
     sidebarCollapsed,
@@ -61,22 +70,43 @@ export function SKUManagementSidebar({ className }: SKUManagementSidebarProps) {
   } = useForecastStore()
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [newSKU, setNewSKU] = useState({ sku: '', displayName: '', category: '' })
+  const [newSKU, setNewSKU] = useState({ sku: '', displayName: '', category: '', productGroup: '' })
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(productGroups.map(g => g.id)))
   
   const filteredSKUs = getFilteredSKUs()
   const hasSelection = selectedSKUIds.length > 0
   const allSelected = filteredSKUs.length > 0 && selectedSKUIds.length === filteredSKUs.length
 
   const handleAddSKU = async () => {
-    if (newSKU.sku && newSKU.displayName) {
+    if (newSKU.sku && newSKU.displayName && newSKU.productGroup) {
       await createSKU({
         sku: newSKU.sku,
         displayName: newSKU.displayName,
-        category: newSKU.category || undefined
+        category: newSKU.category || undefined,
+        productGroup: newSKU.productGroup
       })
-      setNewSKU({ sku: '', displayName: '', category: '' })
+      setNewSKU({ sku: '', displayName: '', category: '', productGroup: '' })
       setIsAddDialogOpen(false)
     }
+  }
+
+  const toggleGroupExpansion = (groupId: string) => {
+    const newExpanded = new Set(expandedGroups)
+    if (newExpanded.has(groupId)) {
+      newExpanded.delete(groupId)
+    } else {
+      newExpanded.add(groupId)
+    }
+    setExpandedGroups(newExpanded)
+  }
+
+  const getGroupColor = (color: string) => {
+    const colorMap: Record<string, string> = {
+      blue: 'bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
+      green: 'bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-300',
+      purple: 'bg-purple-100 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300'
+    }
+    return colorMap[color] || colorMap.blue
   }
 
   const handleDeleteSKU = async (skuId: string) => {
@@ -195,6 +225,24 @@ export function SKUManagementSidebar({ className }: SKUManagementSidebarProps) {
                 />
               </div>
               <div>
+                <Label htmlFor="product-group">Product Group</Label>
+                <Select
+                  value={newSKU.productGroup}
+                  onValueChange={(value) => setNewSKU({ ...newSKU, productGroup: value })}
+                >
+                  <SelectTrigger id="product-group">
+                    <SelectValue placeholder="Select a product group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="category">Category (Optional)</Label>
                 <Input
                   id="category"
@@ -210,7 +258,7 @@ export function SKUManagementSidebar({ className }: SKUManagementSidebarProps) {
               </Button>
               <Button 
                 onClick={handleAddSKU}
-                disabled={!newSKU.sku || !newSKU.displayName || isLoading}
+                disabled={!newSKU.sku || !newSKU.displayName || !newSKU.productGroup || isLoading}
               >
                 {isLoading ? "Adding..." : "Add SKU"}
               </Button>
@@ -258,8 +306,76 @@ export function SKUManagementSidebar({ className }: SKUManagementSidebarProps) {
             </p>
           </div>
         ) : (
-          <div className="p-2 space-y-2">
-            {filteredSKUs.map((sku) => (
+          <div className="p-2 space-y-4">
+            {productGroups.map((group) => {
+              const groupSKUs = filteredSKUs.filter(sku => sku.productGroup === group.id)
+              if (groupSKUs.length === 0 && searchTerm) return null
+              
+              const isExpanded = expandedGroups.has(group.id)
+              const isGroupSelected = selectedGroupIds.includes(group.id)
+              const groupSelectedCount = groupSKUs.filter(sku => selectedSKUIds.includes(sku.sku)).length
+              
+              return (
+                <div key={group.id} className="space-y-2">
+                  {/* Group Header */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all",
+                      getGroupColor(group.color),
+                      isGroupSelected && "ring-2 ring-offset-2 ring-blue-500"
+                    )}
+                    onClick={() => toggleGroupExpansion(group.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleGroupExpansion(group.id)
+                        }}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <h3 className="font-medium text-sm">{group.name}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {groupSKUs.length} SKUs
+                      </Badge>
+                      {groupSelectedCount > 0 && (
+                        <Badge variant="default" className="text-xs">
+                          {groupSelectedCount} selected
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (groupSelectedCount === groupSKUs.length) {
+                            unselectAllInGroup(group.id)
+                          } else {
+                            selectAllInGroup(group.id)
+                          }
+                        }}
+                      >
+                        {groupSelectedCount === groupSKUs.length ? 'Unselect All' : 'Select All'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Group SKUs */}
+                  <Collapsible open={isExpanded}>
+                    <CollapsibleContent>
+                      <div className="pl-4 space-y-2">
+                        {groupSKUs.map((sku) => (
               <Card
                 key={sku.sku}
                 className={cn(
@@ -358,7 +474,13 @@ export function SKUManagementSidebar({ className }: SKUManagementSidebarProps) {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

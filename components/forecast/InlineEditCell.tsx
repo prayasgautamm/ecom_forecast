@@ -234,3 +234,74 @@ export function OpeningStockCell(props: Omit<InlineEditCellProps, 'field' | 'all
     />
   )
 }
+
+export function StockMovementCell({ 
+  skuId, 
+  weekNumber, 
+  stockIn,
+  stockOut,
+  onFocus,
+  onBlur 
+}: { 
+  skuId: string
+  weekNumber: number
+  stockIn: number
+  stockOut: number
+  onFocus?: () => void
+  onBlur?: () => void
+}) {
+  const { updateCell } = useForecastStore()
+  const [isEditing, setIsEditing] = useState(false)
+  const [inputValue, setInputValue] = useState('')
+  
+  const netMovement = stockIn - stockOut
+  const displayValue = netMovement >= 0 ? `+${formatNumber(netMovement)}` : formatNumber(netMovement)
+  
+  const handleDoubleClick = () => {
+    setIsEditing(true)
+    setInputValue(stockIn.toString())
+  }
+  
+  const handleSave = async () => {
+    const value = parseFloat(inputValue) || 0
+    await updateCell(skuId, weekNumber, 'stockIn', value)
+    setIsEditing(false)
+  }
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave()
+    } else if (e.key === 'Escape') {
+      setIsEditing(false)
+      setInputValue('')
+    }
+  }
+  
+  if (isEditing) {
+    return (
+      <Input
+        type="number"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        onFocus={onFocus}
+        className="h-8 text-center font-medium text-purple-600 dark:text-purple-400"
+        autoFocus
+      />
+    )
+  }
+  
+  return (
+    <div 
+      className={cn(
+        "h-8 flex items-center justify-center cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded px-2",
+        "font-medium transition-colors",
+        netMovement >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+      )}
+      onDoubleClick={handleDoubleClick}
+    >
+      {displayValue}
+    </div>
+  )
+}
